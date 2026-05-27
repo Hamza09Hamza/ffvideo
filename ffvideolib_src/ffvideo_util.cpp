@@ -4,32 +4,45 @@
 #include <stdio.h>
 #include <stdarg.h>
 
+// sys/stat.h provides struct stat, stat(), S_IFDIR etc.
+// On Windows these came in implicitly via Windows.h; on Mac/Linux we need them explicitly.
+#include <sys/stat.h>
+#include <errno.h>
+
 #include "ffvideo.h"
 
 #include <boost/date_time/posix_time/posix_time.hpp>
 
 ////////////////////////////////////////////////////////////////////////////////
-/* Windows sleep in 100ns units */
-BOOLEAN nanosleep(LONGLONG ns) {
-	/* Declarations */
-	HANDLE timer;   /* Timer handle */
-	LARGE_INTEGER li;   /* Time defintion */
-	/* Create timer */
+// Cross-platform high-resolution sleep.
+// units_of_100ns: number of 100-nanosecond units to sleep (same scale as
+// the original Windows CreateWaitableTimer implementation).
+// Example: ffvideo_nanosleep(80) sleeps for 8,000 ns = 8 microseconds.
+#ifdef _WIN32
+// --- Windows implementation: uses a high-resolution waitable timer ---
+void ffvideo_nanosleep(uint64_t units_of_100ns) {
+	HANDLE        timer;
+	LARGE_INTEGER li;
 	if (!(timer = CreateWaitableTimer(NULL, TRUE, NULL)))
-		return FALSE;
-	/* Set timer properties */
-	li.QuadPart = -ns;
+		return;
+	li.QuadPart = -(static_cast<LONGLONG>(units_of_100ns));
 	if (!SetWaitableTimer(timer, &li, 0, NULL, NULL, FALSE)) {
 		CloseHandle(timer);
-		return FALSE;
+		return;
 	}
-	/* Start & wait for timer */
 	WaitForSingleObject(timer, INFINITE);
-	/* Clean resources */
 	CloseHandle(timer);
-	/* Slept without problems */
-	return TRUE;
 }
+#else
+// --- Mac / Linux implementation: uses C++11 std::this_thread::sleep_for ---
+// No OS handles needed — the C++ standard library handles it portably.
+#include <thread>
+#include <chrono>
+void ffvideo_nanosleep(uint64_t units_of_100ns) {
+	// each unit = 100 nanoseconds, so multiply by 100 to get nanoseconds
+	std::this_thread::sleep_for(std::chrono::nanoseconds(units_of_100ns * 100));
+}
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 void FFVideo::ReportLog(const char* formatStr, ...)
@@ -232,7 +245,9 @@ AVDictionary** FFVideo::setup_find_stream_info_opts(AVFormatContext* s, AVDictio
 	if (!s->nb_streams)
 		return NULL;
 
-	opts = (AVDictionary**)av_mallocz_array(s->nb_streams, sizeof(*opts));
+	// av_mallocz_array() was removed in FFmpeg 5.0; av_calloc() is the direct
+	// replacement — same behaviour: allocates n*size bytes, zero-initialised.
+	opts = (AVDictionary**)av_calloc(s->nb_streams, sizeof(*opts));
 	if (!opts)
 	{
 		av_log(NULL, AV_LOG_ERROR, "Could not alloc memory for stream options.\n");

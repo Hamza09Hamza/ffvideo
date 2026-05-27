@@ -1,104 +1,129 @@
-# FFVideo
-##### <i>Last update July 31, 2021</i></br>
-An example FFmpeg lib, and wxWidgets Player application with video filters and face detection, it is a no-audio video player intended for video experiments and developers 
-learning how to code media applications. 
+# FFVideo — Python Person Re-Identification & Cross-Platform Port
+
+**Credits:** This is a fork of [bsenftner/ffvideo](https://github.com/bsenftner/ffvideo) by [Blake Senftner](https://github.com/bsenftner).
+
+## What's New in This Fork
+
+This fork adds **Python bindings and real-time person re-identification** on top of the original C++ face detection code:
+
+- **Python wrapper** (`ffvideo.py`): Lightweight ctypes bridge to C++ face detection
+  - `FaceDetector`: HOG-based face detection with dlib landmarks
+  - `FaceEmbedder`: 512-dimensional face embeddings via InsightFace ArcFace
+- **Real-time person tracking** (`demo_embeddings.py`): Identifies and tracks people across video frames
+  - Cosine distance-based person matching
+  - Embedding blending for pose-invariant tracking
+  - ~17 FPS on Apple Silicon with CoreML GPU acceleration
+- **Cross-platform support**: Ported from Windows-only to macOS (and Linux compatible)
+  - All platform-specific code wrapped with proper guards
+  - CMake build system for easier compilation
+
+**Original work by Blake Senftner** (see below) includes all the C++ FFmpeg/Dlib integration and face detection logic.
+
+---
+
+## Original FFVideo Documentation
 
 ![FFVideo00](https://user-images.githubusercontent.com/1216815/125710205-65eaf07c-31b3-43e0-b660-867780cbaba5.png)
 
-FFVideo Player supports multiple simultanious minimum delay playback video windows, seek, scrubbing, basic face detection, plus the surrounding code necessary for a moderately
-professional application, such as persistance for end-user settings, and an embedded web browser providing a 'help window'.
+An FFmpeg library wrapper and wxWidgets Player application with video filters and face detection. This is a no-audio video player intended for video experiments and developers learning how to code media applications.
 
-The idea of this application is to provide a basic video app framework for developers wanting to learn, and experiment with video filters without the overhead of audio processing
-or the normal frame delays of ordinary video playback. If one is training models with video data, and want to preserve the maximum amount of resources for training, this provides
-a nice framework for doing so. This is a C++ Visual Studio 2019 IDE Solution and Project. 
+FFVideo Player supports multiple simultaneous minimum delay playback video windows, seek, scrubbing, basic face detection, plus the surrounding code necessary for a moderately professional application, such as persistence for end-user settings and an embedded web browser providing a 'help window'.
 
-![Interfaces](https://user-images.githubusercontent.com/1216815/125846001-2d363d08-35ac-4ff0-9538-bbf7fa7f1b7f.png)
+The idea of this application is to provide a basic video app framework for developers wanting to learn and experiment with video filters without the overhead of audio processing or the normal frame delays of ordinary video playback.
 
-Some of the coding examples in this project include:
- - An FFmpeg library supporting 
-   - video files, USB Cameras, IP Cameras and IP video services
-   - video file seeks, scrubbing, 
-   - unlimited, chained single source AVFilterGraph filters, 
-   - frame exporting
-   - This project uses the author's modified FFmpeg located here 
-     - https://github.com/bsenftner/FFmpeg
-     - The modification is to support unexpected IP and USB stream dropouts
-   - This project also uses the author's SQLite3 wrapper library, located here:
-     - https://github.com/bsenftner/kvs
-   - And this project uses Jorge L Rodriguez's stb image scaling header only library:
-     - http://github.com/nothings/stb 
- - A multi-threaded wxWidgets Video Player application
-   - Multiple simultanious video windows
-   - Exported video frames collected and re-encoded as H.264 .MP4 and .264 Elementary Streams 
-   - Easy access to AVFilterGraph Video Filters and video experimentation
-   - Integration with Dlib and a basic example of Face Detection and of Face Landmark Recovery
-   - An embedded web browser as the "Help" window
-   - Lots in-code of documentation describing how, what and why 
+### Original Features (by Blake Senftner)
 
-When playing an HD film trailer from a local SSD drive, frame rates as high as ~~700~~ 70 fps (after reverting fo FFmpeg 4.2.3) can be achieved while 
-only using 2 cores of a Ryzen 7. Extended time tests show no memory leakage or stale/dead thread acculumation. 
+ - **FFmpeg library support**
+   - Video files, USB Cameras, IP Cameras, and IP video services
+   - Video file seeks and scrubbing
+   - Unlimited, chained single-source AVFilterGraph filters
+   - Frame exporting
+   - Uses Blake Senftner's modified FFmpeg: https://github.com/bsenftner/FFmpeg
+   - Uses Blake Senftner's SQLite3 wrapper: https://github.com/bsenftner/kvs
+   - Uses Jorge L Rodriguez's stb image scaling library: http://github.com/nothings/stb
 
-Although vcpkg is used, integration issues led to independant building of Boost, FFmpeg, GLEW, and WxWidgets. 
-For these reasons the following environment variables are used within the project's Visual Studio 2019 solution and VS projects to locate these libraries:
- - **BoostRoot**    Set to root of the Boost 1_76_0 directory hierarchy
- - **FFmpegRoot**   Set to the FFmpeg installation directory root, author used version ~~4.4~~ 4.2.3 - new build with FFmpeg 4.2.3 is more stable, see below
- - **FFmpegDebugRoot** Set to the FFmpeg debug build directory root
- - **FFvideoRoot**  Set to the github root of this project
- - **GLEWRoot**     Set to root of GLEW 2.2.0
- - **kvsRoot**      Set to the github root of https://github.com/bsenftner/kvs
- - **vcpkgRoot**    Set to the installation root of vcpkg
- - **WXWIN**        Set to the installation root of wxWidgets, author used version 3.1.3 with the optional wxWebView component built and required for this project
+ - **Multi-threaded wxWidgets Video Player**
+   - Multiple simultaneous video windows
+   - Exported video frames re-encoded as H.264 MP4 and elementary streams
+   - Easy access to AVFilterGraph video filters
+   - Dlib integration for face detection and landmark recovery
+   - Embedded web browser as help window
+   - Extensive in-code documentation
 
-Through vcpkg integration with Visual Studio, the TurboJPEG, jpeg, png, zlib, and Dlib libraries are also used.
-Vcpkg also failed to integrate with Visual Studio 2019 out of the box, so a custom *triplet file* named **x64-windows-static-142.cmake** was placed inside
-the $(vcpkgRoot)\triplets directory with this contents:
+Performance: ~70 FPS on HD content using minimal CPU resources.
+
+### Face Detection Components (Original)
+
+- Dlib HOG-based face detection
+- 68-point or 81-point facial landmarks
+- Standardized passport-style face image extraction
+
+**Required:** Download `shape_predictor_68_face_landmarks.dat` from:
 ```
-set(VCPKG_TARGET_ARCHITECTURE x64)
-set(VCPKG_CRT_LINKAGE static)
-set(VCPKG_LIBRARY_LINKAGE static)
-set(VCPKG_PLATFORM_TOOLSET v142)
+http://dlib.net/files/shape_predictor_68_face_landmarks.dat.bz2
 ```
-Once that custom vcpkg triplet was in place, vcpkg correctly generates Visual Studio 2019 x64 static builds using the Windows 142 toolset
+Place it in `models/` directory after decompression.
 
-Through wxWidgets OpenGL, and an embedded web browser is encorporated. The embedded web browser requires a custom build of wxWidgets. 
+---
 
-Dlib's face detection model file shape_predictor_68_face_landmarks.dat is also required for this project, it can be downloaded in compressed form from:
+## Quick Start
 
-   http://dlib.net/files/shape_predictor_68_face_landmarks.dat.bz2
-   
-After decompression, it should be placed in the project's bin directory, just beneath the project's git root
+### Build C++ Library
+```bash
+mkdir build && cd build
+cmake -DCMAKE_BUILD_TYPE=Release ..
+make
+cd ..
+```
 
-New: 
-Added a menu option for display of detected faces. Beta, only displays first detected face per frame at the moment.
+### Run Person Re-ID Demo
+```bash
+source venv/bin/activate
+python3 demo_embeddings.py
+```
 
-<img src="https://user-images.githubusercontent.com/1216815/126713258-f1d23ba1-3fce-4038-8cde-e1567e365362.png" width=400>
+**Controls:**
+- `q`: Quit
+- `t`: Toggle threshold display
+- `+`/`-`: Adjust matching threshold
 
-New July 28, 2021:
-Modified the display of detected faces to optionally <i>standardize the collected face images</i> to be presented as close as possible to <b>Standard Passport Format</b>, with the eyes rotated to be level and re-evaluated to a 300x300 pixel image, regardless of source dimensions. 
+---
 
-demonstrating tilted head registration | demonstrating multiple heads
--------------------------------------- | ----------------------------
-<img src="https://user-images.githubusercontent.com/1216815/127404166-f7139c59-a60c-4078-9ce5-cbe8a576f8aa.jpg"> | <img src="https://user-images.githubusercontent.com/1216815/127430640-42680645-683b-4cd0-9cea-cda0a0059b26.png">
+## Architecture
 
-New July 29, 2021:</br>
+### `ffvideo.py` — Python-C++ Bridge
+- `FaceDetector`: Wraps C++ HOG detector (from original project)
+  - `set_image()`: Input camera frame
+  - `detect_faces()`: Run detection
+  - `get_face_box()`: Get bounding box
+  - `get_face_chip()`: Extract 128×128 aligned face
+  - `get_landmarks()`: Get facial landmarks
 
-Switched to using the <a href="http://ermig1979.github.io/Simd/index.html">SIMD Library</a> for RGBA to RGB and to grayscale conversions. Multiple face detection code changes, such as adding a <i>precision</i> control and switching to doing face detections in grayscale.</br>
+- `FaceEmbedder`: InsightFace ArcFace model
+  - `get_embedding()`: Face chip → 512-dim vector
+  - `distance()`: Cosine distance between embeddings
+  - `is_same_person()`: Binary same/different decision
 
-<img src="https://user-images.githubusercontent.com/1216815/127581406-9aadb7a9-f2ff-40df-9363-239497f2df72.png" width=40% >
+### `demo_embeddings.py` — Real-Time Person Tracking
+1. Detect faces in each frame
+2. Extract embeddings from face chips
+3. Match embeddings against known people (distance < 0.35)
+4. Track and update person embeddings over time
+5. Remove people not seen for 30 seconds
 
-New July 31, 2021:</br>
+---
 
-Experimenting with the 81 point face landmark model from https://github.com/codeniko/shape_predictor_81_face_landmarks </br>
-In RenderCanvas.cpp, the bottom of the RenderCanvas() constructor is a call to</br> 
-m_faceDetectMgr.SetFaceModel( FACE_MODEL::eightyone ); </br>
-just change that to m_faceDetectMgr.SetFaceModel( FACE_MODEL::sixtyeight ); to revert back to the original face landmarks. </br>
-Note there is some glue logic when getting the "face chips" for the 81 point face model to work.
+## Original Project Information
 
-![detectedFaceDisplay05](https://user-images.githubusercontent.com/1216815/127749077-e9e5939e-1a73-422b-9910-76bddd899cf9.png)
+This C++ codebase is a Visual Studio 2019 project with complex build dependencies. Refer to the original repository for Windows build instructions: https://github.com/bsenftner/ffvideo
 
+### Original Known Issues
 
-Known issues:
+- PlayAll plays USB cameras first (one-by-one) before other streams to avoid thread safety issues
+- Rebuilding against FFmpeg 4.2.3 removed replay instabilities but reduced speed slightly
 
-(Rebuilding against FFmpeg 4.2.3 seems to have removed the replay instabilities, but it's not as fast anymore. See note, mid-readme)
+---
 
-PlayAll has been modified to play USB cameras first, one by one, and then the other stream types are played simultaniously. This seems to sidestep USB stream startups being non-thread safe. 
+## Contributing
+
+This fork focuses on Python bindings and person re-identification. For enhancements to the original C++ video player, please contribute to the upstream project. 

@@ -413,7 +413,7 @@ void FaceDetectionThreadMgr::FrameProcessingLoop(void)
 
 			good = !m_stop_frame_processing_loop;
 		}
-		nanosleep(nanosleep_param);
+		ffvideo_nanosleep(nanosleep_param);
 	}
 
 	m_frame_processing_loop_ended = true;

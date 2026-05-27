@@ -5,7 +5,12 @@
 #ifndef _WX_FFVIDEO_PLAYER_H_
 #define _WX_FFVIDEO_PLAYER_H_
 
+// windows.h is the entire Windows OS API — only available on Windows.
+// On Mac/Linux the OS services we need (threads, mutexes, timing) come from
+// the C++ standard library (thread, mutex, chrono) which is already included below.
+#ifdef _WIN32
 #include "windows.h"
+#endif
 #include <math.h>
 #include <stdint.h>
 #include <inttypes.h>

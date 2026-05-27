@@ -58,6 +58,10 @@ public:
 
 
 
+// windows_process wraps CreateProcessW / WaitForSingleObject / TerminateProcess —
+// all Windows-only OS APIs. On Mac/Linux FFmpeg is called via std::system() in
+// VideoEncode.cpp instead (the windows_process path is already commented out there).
+#ifdef _WIN32
 class windows_process
 {
 public:
@@ -183,7 +187,8 @@ public:
 		}
 		return true;
 	}
-};//class windows_process
+}; // class windows_process
+#endif // _WIN32
 
 
 

@@ -260,7 +260,7 @@ void FFVideo_FrameExporter::ExportProcessLoop(void)
 				}
 			}
 		}
-		nanosleep(nanosleep_param);
+		ffvideo_nanosleep(nanosleep_param);
 	}
 
   m_export_processing_loop_ended = true;

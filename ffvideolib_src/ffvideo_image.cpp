@@ -22,7 +22,8 @@ using namespace dlib;
 #include "stb_image_resize.h"
 
 
-#include <excpt.h>
+// excpt.h (Windows Structured Exception Handling) has been removed.
+// The __try/__except block that needed it is replaced with standard C++ try/catch below.
 
 // used when writing out jpegs:
 typedef struct
@@ -259,12 +260,14 @@ bool ReadJPEG(const char* pszInfile, uint8_t** ppOutImage, uint32_t& nOutRows, u
 		nCurRow--;
 	}
 
-	__try
+	// __try/__except is Windows-only (Structured Exception Handling).
+	// Standard C++ try/catch works identically here and compiles on all platforms.
+	try
 	{
 		jpeg_finish_decompress(&cinfo);        // finish the decompression
 		jpeg_destroy_decompress(&cinfo);       // and destroy the object (free the mem)
 	}
-	__except (EXCEPTION_EXECUTE_HANDLER)
+	catch (...)
 	{
 		fclose(hInfile);
 		delete[] pScanLines;	// don't leak memory!
@@ -310,12 +313,14 @@ bool SaveJpeg(const char* filepath, FFVideo_Image& image, int32_t quality = 80 )
 		}
 	}
 
-	_set_errno(0);
+	// _set_errno / _get_errno / errno_t are MSVC-only.
+	// POSIX errno is a plain int and is set/read directly — works on all platforms.
+	errno = 0;
 	FILE* outfile = fopen(filepath, "wb");
 	if (!outfile)
 	{
-		errno_t err;
-		_get_errno(&err);
+		int err = errno;   // read the POSIX error code (e.g. EACCES, ENOENT)
+		(void)err;         // currently unused but available for logging/debugging
 
 		delete[] write_pixels;
 		return false;

@@ -542,7 +542,7 @@ void FFVideo::VideoProcessLoop(void)
 				nanosleep_param = milliseconds * 10; // each ms is 10 nanosleep units
 			}
 		}
-		nanosleep(nanosleep_param);
+		ffvideo_nanosleep(nanosleep_param);
 	}
 	
 	m_video_processing_loop_ended = true;

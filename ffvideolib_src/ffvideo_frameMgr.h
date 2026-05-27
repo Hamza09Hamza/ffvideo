@@ -27,7 +27,11 @@ extern "C" {
 #include "libavfilter/buffersrc.h"
 #include "libavutil/avstring.h"
 }
+// #pragma comment(lib,...) is a MSVC-only linker directive — on Mac/Linux
+// the linker flags are passed via the build system (CMake / Makefile / compiler flags)
+#ifdef _WIN32
 #pragma comment(lib, "libavformat.a")
+#endif
 
 #include "BCTime.h"
 #include "ffvideo_image.h"
@@ -47,7 +51,13 @@ class FFVideo;
 #endif // defined(_MSC_VER) && _MSC_VER < 1900
 #endif // WIN32
 
-BOOLEAN nanosleep(LONGLONG ns);	// utility that sleeps in 100ns units
+// Cross-platform high-resolution sleep.
+// On Windows the original used CreateWaitableTimer (100ns units).
+// On Mac/Linux we use std::this_thread::sleep_for underneath.
+// Units: same as the original — each unit = 100 nanoseconds.
+// Renamed from nanosleep() to avoid collision with the POSIX nanosleep()
+// that already exists on Mac/Linux with a completely different signature.
+void ffvideo_nanosleep(uint64_t units_of_100ns);
 
 //------------------------------------------------------------------------------
 // this describes one pixel format of a USB camera, where a specific USB cammera

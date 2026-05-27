@@ -3,7 +3,10 @@
 #define _FFVIDEO_H_
 
 
+// Windows.h is only available on Windows — guard it so Mac/Linux builds cleanly
+#ifdef _WIN32
 #include <Windows.h>
+#endif
 
 #include "ffvideo_frameMgr.h"
 
