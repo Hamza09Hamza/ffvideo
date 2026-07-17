@@ -68,7 +68,7 @@ extern "C" void* ffvideo_detector_create(const char* model_path, int face_model)
     // Load the shape predictor from file
     try
     {
-        dlib::deserialize(model_path) >> det->sp;
+        dlib::deserialize(std::string(model_path)) >> det->sp;
     }
     catch (const std::exception& e)
     {
