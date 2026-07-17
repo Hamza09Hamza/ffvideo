@@ -4,9 +4,12 @@ import cv2
 from pathlib import Path
 import insightface
 import os
+import platform
 
-# Load the compiled C++ library
-_dylib_path = Path(__file__).parent / "build" / "libffvideo_python.dylib"
+# Load the compiled C++ library — the extension differs per OS because each
+# platform's dynamic linker expects its own shared-library format.
+_lib_extension = {"Darwin": "dylib", "Linux": "so", "Windows": "dll"}[platform.system()]
+_dylib_path = Path(__file__).parent / "build" / f"libffvideo_python.{_lib_extension}"
 _lib = ctypes.CDLL(str(_dylib_path))
 
 # Define function signatures

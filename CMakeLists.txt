@@ -2,7 +2,11 @@ cmake_minimum_required(VERSION 3.10)
 project(ffvideo_python)
 
 # Force compilation for ARM64 (Apple Silicon)
-set(CMAKE_OSX_ARCHITECTURES arm64)
+if(UNIX AND NOT APPLE)
+  set(CMAKE_POSITION_INDEPENDENT_CODE ON)  # Tells the compiler to generate position-independent code
+  add_compile_options(-w)                   # Suppress warnings (dlib has some on Linux)
+endif()
+
 
 # Use C++17 standard
 set(CMAKE_CXX_STANDARD 17)

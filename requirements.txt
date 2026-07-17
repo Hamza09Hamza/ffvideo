@@ -1,4 +1,12 @@
-numpy
+numpy>=2.0
 opencv-python
 insightface
-onnxruntime-silicon
+torch
+onnxruntime
+fastapi
+uvicorn[standard]
+websockets
+python-multipart
+psycopg[binary]
+pgvector
+python-dotenv
