@@ -17,12 +17,16 @@ _deepfake_architecture.py if it's revisited later with real trained weights.
 import time
 from collections import deque
 
+import numpy as np
+
+from face_id.server import db
+
 WINDOW_SIZE = 15          # frames to average scores over
 # Pixels; if a face moves further than this between frames, treat it as a new
-# face and reset its score history. Needs to be generous because detection
-# currently runs at ~5fps (CPU-bound dlib HOG, see the `detect` timing) —
-# ordinary head movement between two frames 200ms apart can easily be
-# 100+ px, so a tight threshold here causes constant, spurious resets.
+# face and reset its score history. Kept generous — even at higher fps,
+# ordinary head movement between frames can be tens of pixels, and a tight
+# threshold here causes spurious resets (see the `detect` timing to gauge
+# current fps).
 POSITION_THRESHOLD = 150
 
 
@@ -75,6 +79,23 @@ class FaceTracker:
         history = histories[metric]
         return sum(history) / len(history)
 
+    def record_embedding(self, face_id, embedding):
+        """Stash one frame's embedding for this face, for later averaging."""
+        self._faces[face_id].setdefault("embeddings", []).append(embedding)
+
+    def average_embedding(self, face_id):
+        """Mean of every embedding captured so far for this face (None if none yet)."""
+        embeddings = self._faces[face_id].get("embeddings", [])
+        return np.mean(embeddings, axis=0) if embeddings else None
+
+    def set_identity(self, face_id, identity):
+        """Cache a DB match result so process_frame only queries the DB once per face."""
+        self._faces[face_id]["identity"] = identity
+
+    def get_identity(self, face_id):
+        """The cached identity match, or None if it hasn't been looked up yet."""
+        return self._faces[face_id].get("identity")
+
     def frame_count(self, face_id, metric):
         histories = self._faces[face_id]["histories"]
         return len(histories.get(metric, ()))
@@ -94,13 +115,14 @@ class FaceTracker:
 
 class VerificationSession:
     """
-    Owns one FaceDetector (stateful, not shareable) for the lifetime of a
-    WebSocket connection, and drives the shared antispoof model (stateless,
-    GPU-resident, safe to reuse across sessions) per frame.
+    Drives one WebSocket connection's per-frame processing. Both the face
+    analyzer (SCRFD detection + ArcFace embedding) and the antispoof model
+    are stateless at inference time and GPU-resident, so they're shared
+    singletons passed in from main.py rather than created per session.
     """
 
-    def __init__(self, face_detector, antispoof_model, antispoof_threshold=0.5):
-        self.detector = face_detector
+    def __init__(self, face_analyzer, antispoof_model, antispoof_threshold=0.5):
+        self.face_analyzer = face_analyzer
         self.antispoof_model = antispoof_model
         self.antispoof_threshold = antispoof_threshold
         self.tracker = FaceTracker()
@@ -114,12 +136,10 @@ class VerificationSession:
         """
         t_start = time.perf_counter()
 
-        height, width = bgr_frame.shape[:2]
-        self.detector.set_image(bgr_frame, width, height, detection_scale=0.35)
-        num_faces = self.detector.detect_faces()
+        detected = self.face_analyzer.analyze(bgr_frame)
         t_detect = time.perf_counter()
 
-        if num_faces <= 0:
+        if not detected:
             self.tracker.clear()
             return {
                 "faces": [],
@@ -130,8 +150,8 @@ class VerificationSession:
         faces_out = []
         antispoof_total = 0.0
 
-        for i in range(num_faces):
-            x1, y1, x2, y2 = self.detector.get_face_box(i)
+        for face in detected:
+            x1, y1, x2, y2 = face["box"]
             face_id = self.tracker.match((x1, y1, x2, y2))
             matched_ids.add(face_id)
 
@@ -141,6 +161,16 @@ class VerificationSession:
 
             avg_liveness = self.tracker.record(face_id, "antispoof", antispoof_result["score"])
             warmed_up = self.tracker.is_warmed_up(face_id, "antispoof")
+
+            self.tracker.record_embedding(face_id, face["embedding"])
+
+            identity = None
+            if warmed_up and avg_liveness > self.antispoof_threshold:
+                if self.tracker.get_identity(face_id) is None:
+                    avg_embedding = self.tracker.average_embedding(face_id)
+                    result = db.find_best_match(avg_embedding)
+                    self.tracker.set_identity(face_id, result)
+                identity = self.tracker.get_identity(face_id)
 
             faces_out.append({
                 "face_id": face_id,
@@ -153,6 +183,7 @@ class VerificationSession:
                     "avg_score": avg_liveness,
                     "is_real": avg_liveness > self.antispoof_threshold,
                 },
+                "identity": identity,
             })
 
         self.tracker.prune(matched_ids)

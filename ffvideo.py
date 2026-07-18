@@ -237,9 +237,13 @@ class FaceEmbedder:
             _ = insightface.app.FaceAnalysis(name='buffalo_l')
             # Now the model should exist
 
+        # CUDAExecutionProvider only exists if onnxruntime-gpu is installed;
+        # onnxruntime silently skips providers that aren't available, so
+        # this falls back to CPU on machines without it (e.g. no GPU, or a
+        # non-CUDA platform) without needing an explicit platform check.
         self.recognition_model = insightface.model_zoo.get_model(
             model_path,
-            providers=['CoreMLExecutionProvider', 'CPUExecutionProvider']
+            providers=['CUDAExecutionProvider', 'CPUExecutionProvider']
         )
 
         print("✓ Face embedder ready")

@@ -2,11 +2,11 @@ numpy>=2.0
 opencv-python
 insightface
 torch
-onnxruntime
+onnxruntime-gpu
 fastapi
 uvicorn[standard]
 websockets
 python-multipart
-psycopg[binary]
+psycopg[binary,pool]
 pgvector
 python-dotenv
