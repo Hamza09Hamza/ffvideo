@@ -5,8 +5,8 @@ torch
 onnxruntime-gpu
 fastapi
 uvicorn[standard]
-websockets
 python-multipart
 psycopg[binary,pool]
 pgvector
 python-dotenv
+pyjwt
