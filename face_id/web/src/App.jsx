@@ -6,7 +6,7 @@ import './styles.css'
 export default function App() {
   const [mode, setMode] = useState('verify')
   const [serverUrl, setServerUrl] = useState('https://ibsai.tailff4c89.ts.net:8000')
-  const [apiKey, setApiKey] = useState('')
+  const [apiKey, setApiKey] = useState('GZF9lMrUuy4ddxoqtlWOzvHbjswx-OT_ul3tiSshIbw')
 
   return (
     <div className="app">
